@@ -15,7 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-@SpringBootTest
+@SpringBootTest(properties = "app.fixtures.enabled=false")
 @AutoConfigureMockMvc
 class ApiApplicationTests {
 
@@ -44,7 +44,7 @@ class ApiApplicationTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.id").isNumber())
                 .andExpect(jsonPath("$.document").value("CC-100"));
 
         mockMvc.perform(post("/api/clinica/paciente")

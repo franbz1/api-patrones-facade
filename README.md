@@ -57,8 +57,29 @@ The application reads these local properties from `src/main/resources/applicatio
 
 - `app.security.jwt.secret`
 - `app.security.jwt.expiration-minutes`
+- `app.fixtures.enabled`
 
 For a real environment, move the secret to an environment variable or secret manager.
+
+### Demo fixtures on startup
+
+When the application starts, it automatically loads demo fixtures in memory through `ClinicFixtureLoader`.
+
+The loader uses the existing services and facade to create:
+
+- demo users
+- demo patients
+- historical consultations
+- historical appointments
+- prescriptions
+- laboratory orders
+- one future appointment per seeded patient when availability exists
+
+If you need to disable fixtures, set:
+
+```properties
+app.fixtures.enabled=false
+```
 
 ## Package Structure
 
@@ -116,6 +137,7 @@ These users are seeded in memory:
 - `admin` / `admin123`
 - `doctor` / `doctor123`
 - `patient` / `patient123`
+- `clinic-demo` / `clinic123`
 
 ### `POST /api/auth/login`
 
@@ -169,6 +191,10 @@ The frontend should:
 2. Store the returned `accessToken`
 3. Send `Authorization: Bearer <token>` on protected requests
 4. Call `POST /api/auth/logout` when the user signs out
+
+Recommended demo credentials for local development:
+
+- `clinic-demo` / `clinic123`
 
 ## Facade Responsibilities
 

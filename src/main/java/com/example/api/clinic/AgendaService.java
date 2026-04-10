@@ -59,24 +59,29 @@ public class AgendaService {
             }
 
             schedule.availableSlots.remove(normalizedDate);
-
-            Appointment appointment = new Appointment(
-                    appointmentSequence.incrementAndGet(),
-                    patientId,
-                    schedule.id,
-                    schedule.fullName,
-                    schedule.specialty.apiValue(),
-                    normalizedDate,
-                    AppointmentStatus.SCHEDULED,
-                    DEFAULT_REMINDER);
-
-            appointmentsById.put(appointment.id(), appointment);
-            return appointment;
+            return storeAppointment(patientId, schedule, normalizedDate);
         }
 
         throw new ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
                 "No available doctor found for the requested specialty and date");
+    }
+
+    public Appointment createHistoricalAppointment(Long patientId, String specialtyValue, LocalDateTime appointmentDate) {
+        if (appointmentDate == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "appointmentDate is required");
+        }
+        if (!appointmentDate.isBefore(LocalDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "historical appointment must be in the past");
+        }
+
+        Specialty specialty = Specialty.fromValue(specialtyValue);
+        DoctorSchedule schedule = schedulesByDoctorId.values().stream()
+                .filter(candidate -> candidate.specialty == specialty)
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported specialty"));
+
+        return storeAppointment(patientId, schedule, appointmentDate.truncatedTo(ChronoUnit.MINUTES));
     }
 
     public Appointment cancelAppointment(Long appointmentId) {
@@ -124,6 +129,21 @@ public class AgendaService {
                 schedule.availableSlots.stream()
                         .sorted()
                         .toList());
+    }
+
+    private Appointment storeAppointment(Long patientId, DoctorSchedule schedule, LocalDateTime appointmentDate) {
+        Appointment appointment = new Appointment(
+                appointmentSequence.incrementAndGet(),
+                patientId,
+                schedule.id,
+                schedule.fullName,
+                schedule.specialty.apiValue(),
+                appointmentDate,
+                AppointmentStatus.SCHEDULED,
+                DEFAULT_REMINDER);
+
+        appointmentsById.put(appointment.id(), appointment);
+        return appointment;
     }
 
     private void seedDoctors() {

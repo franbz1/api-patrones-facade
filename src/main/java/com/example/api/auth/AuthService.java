@@ -27,6 +27,15 @@ public class AuthService {
         seedUsers();
     }
 
+    public void createUserIfAbsent(String username, String password, List<String> roles) {
+        usersByUsername.putIfAbsent(
+                requireText(username, "username"),
+                new AuthenticatedUser(
+                        requireText(username, "username"),
+                        requireText(password, "password"),
+                        List.copyOf(roles)));
+    }
+
     public LoginResponse login(LoginRequest request) {
         String username = requireText(request.username(), "username");
         String password = requireText(request.password(), "password");
@@ -61,9 +70,9 @@ public class AuthService {
     }
 
     private void seedUsers() {
-        usersByUsername.put("admin", new AuthenticatedUser("admin", "admin123", List.of("ROLE_ADMIN")));
-        usersByUsername.put("doctor", new AuthenticatedUser("doctor", "doctor123", List.of("ROLE_DOCTOR")));
-        usersByUsername.put("patient", new AuthenticatedUser("patient", "patient123", List.of("ROLE_PATIENT")));
+        createUserIfAbsent("admin", "admin123", List.of("ROLE_ADMIN"));
+        createUserIfAbsent("doctor", "doctor123", List.of("ROLE_DOCTOR"));
+        createUserIfAbsent("patient", "patient123", List.of("ROLE_PATIENT"));
     }
 
     private void purgeExpiredRevocations() {
