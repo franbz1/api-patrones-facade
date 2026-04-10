@@ -50,6 +50,7 @@ public class JwtService {
 
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("sub", user.username());
+        payload.put("patientId", user.patientId());
         payload.put("roles", user.roles());
         payload.put("iat", now.getEpochSecond());
         payload.put("exp", expiresAt.getEpochSecond());
@@ -86,11 +87,12 @@ public class JwtService {
         }
 
         String username = String.valueOf(claims.get("sub"));
+        Long patientId = readLongClaim(claims, "patientId");
         String tokenId = String.valueOf(claims.get("jti"));
         @SuppressWarnings("unchecked")
         List<String> roles = claims.containsKey("roles") ? (List<String>) claims.get("roles") : List.of();
 
-        return new ValidatedToken(username, roles, tokenId, expiresAt);
+        return new ValidatedToken(username, patientId, roles, tokenId, expiresAt);
     }
 
     private Map<String, Object> decodePayload(String encodedPayload) {
@@ -132,6 +134,6 @@ public class JwtService {
     public record TokenDetails(String token, String tokenId, Instant expiresAt) {
     }
 
-    public record ValidatedToken(String username, List<String> roles, String tokenId, Instant expiresAt) {
+    public record ValidatedToken(String username, Long patientId, List<String> roles, String tokenId, Instant expiresAt) {
     }
 }

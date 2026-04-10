@@ -1,5 +1,6 @@
 package com.example.api.clinic;
 
+import com.example.api.auth.AuthService;
 import com.example.api.clinic.ClinicDomain.Appointment;
 import com.example.api.clinic.ClinicDomain.CompleteHistoryResponse;
 import com.example.api.clinic.ClinicDomain.CreateAppointmentRequest;
@@ -20,22 +21,27 @@ public class ClinicFacade {
     private final MedicalRecordService medicalRecordService;
     private final PrescriptionService prescriptionService;
     private final LaboratoryService laboratoryService;
+    private final AuthService authService;
 
     public ClinicFacade(
             PatientService patientService,
             AgendaService agendaService,
             MedicalRecordService medicalRecordService,
             PrescriptionService prescriptionService,
-            LaboratoryService laboratoryService) {
+            LaboratoryService laboratoryService,
+            AuthService authService) {
         this.patientService = patientService;
         this.agendaService = agendaService;
         this.medicalRecordService = medicalRecordService;
         this.prescriptionService = prescriptionService;
         this.laboratoryService = laboratoryService;
+        this.authService = authService;
     }
 
     public Patient registerPatient(CreatePatientRequest request) {
+        String password = ClinicDomain.requireText(request.password(), "password");
         Patient patient = patientService.registerPatient(request);
+        authService.registerPatientAccess(patient, password);
         medicalRecordService.initializeRecord(patient.id());
         return patient;
     }

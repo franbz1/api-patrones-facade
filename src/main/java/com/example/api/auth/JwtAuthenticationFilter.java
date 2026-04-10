@@ -39,7 +39,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             try {
                 ValidatedToken validatedToken = authService.authenticate(authorization.substring(BEARER_PREFIX.length()));
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                        validatedToken.username(),
+                        new PatientPrincipal(
+                                validatedToken.username(),
+                                validatedToken.patientId(),
+                                validatedToken.roles()),
                         null,
                         validatedToken.roles().stream()
                                 .map(SimpleGrantedAuthority::new)

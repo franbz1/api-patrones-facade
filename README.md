@@ -67,7 +67,7 @@ When the application starts, it automatically loads demo fixtures in memory thro
 
 The loader uses the existing services and facade to create:
 
-- demo users
+- demo patient accounts
 - demo patients
 - historical consultations
 - historical appointments
@@ -130,14 +130,23 @@ JWT authentication is now available.
 - `POST /api/clinica/prescripcion`
 - `POST /api/clinica/laboratorio`
 
-### Demo users
+### Patient-linked accounts
 
-These users are seeded in memory:
+Authentication is linked to patient records.
 
-- `admin` / `admin123`
-- `doctor` / `doctor123`
-- `patient` / `patient123`
-- `clinic-demo` / `clinic123`
+That means:
+
+- each patient account is created through `POST /api/clinica/paciente`
+- login uses the patient document plus password
+- each JWT includes the corresponding `patientId`
+- protected patient flows can only operate on the authenticated patient data
+
+### Fixture credentials
+
+When startup fixtures are enabled, these patient accounts are created automatically:
+
+- `CC-900001` / `maria123`
+- `CC-900002` / `juan123`
 
 ### `POST /api/auth/login`
 
@@ -147,8 +156,8 @@ Request body:
 
 ```json
 {
-  "username": "admin",
-  "password": "admin123"
+  "document": "CC-900001",
+  "password": "maria123"
 }
 ```
 
@@ -159,8 +168,9 @@ Response body:
   "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "tokenType": "Bearer",
   "expiresAt": "2026-04-10T20:10:00Z",
-  "username": "admin",
-  "roles": ["ROLE_ADMIN"]
+  "username": "CC-900001",
+  "patientId": 1,
+  "roles": ["ROLE_PATIENT"]
 }
 ```
 
@@ -194,7 +204,7 @@ The frontend should:
 
 Recommended demo credentials for local development:
 
-- `clinic-demo` / `clinic123`
+- `CC-900001` / `maria123`
 
 ## Facade Responsibilities
 
@@ -270,6 +280,7 @@ Request body:
   "document": "CC-100",
   "email": "ana@example.com",
   "phone": "3001234567",
+  "password": "ana123",
   "allergies": ["penicillin"]
 }
 ```
@@ -277,6 +288,7 @@ Request body:
 Notes:
 
 - Spanish aliases are also accepted for some fields, for example `nombres`, `apellidos`, `documento`, `correo`, `telefono`, `alergias`
+- Patient registration now creates the patient login account as well
 
 ### `GET /medicos?especialidad=cardiologia`
 
@@ -407,6 +419,9 @@ Typical failure cases:
   - Expired token
   - Revoked token after logout
 
+- `403 Forbidden`
+  - The authenticated patient is trying to access another patient record
+
 - `404 Not Found`
   - Patient not found
   - Appointment not found
@@ -435,4 +450,4 @@ Current coverage validates:
 - No update endpoints
 - Appointment cancellation exists only at service level for now, not as a REST endpoint
 - Past appointments only appear in history once their datetime is before the current system time
-- Auth users are demo users stored in memory, not linked to patient registration
+- Tokens are patient-scoped; there is no separate admin or staff authorization model yet

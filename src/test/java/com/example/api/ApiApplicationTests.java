@@ -36,6 +36,7 @@ class ApiApplicationTests {
                   "document": "CC-100",
                   "email": "ana@example.com",
                   "phone": "3001234567",
+                  "password": "ana123",
                   "allergies": ["penicillin"]
                 }
                 """;
@@ -55,9 +56,9 @@ class ApiApplicationTests {
 
     @Test
     void shouldScheduleAppointmentAndReturnReminder() throws Exception {
-        Long patientId = createPatient("CC-101", "ibuprofen");
-        String token = loginAndGetToken();
-        String appointmentDate = getFirstAvailableSlot("cardiologia");
+        PatientSession patientSession = createPatient("CC-101", "ibuprofen", "patient101");
+        String token = loginAndGetToken(patientSession.document(), patientSession.password());
+        String appointmentDate = getFirstAvailableSlot(token, "cardiologia");
 
         String payload = """
                 {
@@ -65,22 +66,22 @@ class ApiApplicationTests {
                   "specialty": "cardiologia",
                   "appointmentDate": "%s"
                 }
-                """.formatted(patientId, appointmentDate);
+                """.formatted(patientSession.patientId(), appointmentDate);
 
         mockMvc.perform(post("/api/clinica/cita")
                         .header(AUTHORIZATION, bearerToken(token))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.patientId").value(patientId))
+                .andExpect(jsonPath("$.patientId").value(patientSession.patientId()))
                 .andExpect(jsonPath("$.specialty").value("cardiologia"))
                 .andExpect(jsonPath("$.reminder").isNotEmpty());
     }
 
     @Test
     void shouldBlockPrescriptionWhenMedicationMatchesAllergy() throws Exception {
-        Long patientId = createPatient("CC-102", "aspirin");
-        String token = loginAndGetToken();
+        PatientSession patientSession = createPatient("CC-102", "aspirin", "patient102");
+        String token = loginAndGetToken(patientSession.document(), patientSession.password());
 
         String payload = """
                 {
@@ -93,7 +94,7 @@ class ApiApplicationTests {
                     }
                   ]
                 }
-                """.formatted(patientId);
+                """.formatted(patientSession.patientId());
 
         mockMvc.perform(post("/api/clinica/prescripcion")
                         .header(AUTHORIZATION, bearerToken(token))
@@ -104,8 +105,8 @@ class ApiApplicationTests {
 
     @Test
     void shouldReturnCompleteHistoryWithPrescriptionsAndLaboratoryOrders() throws Exception {
-        Long patientId = createPatient("CC-103", "none");
-        String token = loginAndGetToken();
+        PatientSession patientSession = createPatient("CC-103", "none", "patient103");
+        String token = loginAndGetToken(patientSession.document(), patientSession.password());
 
         mockMvc.perform(post("/api/clinica/prescripcion")
                         .header(AUTHORIZATION, bearerToken(token))
@@ -121,7 +122,7 @@ class ApiApplicationTests {
                                     }
                                   ]
                                 }
-                                """.formatted(patientId)))
+                                """.formatted(patientSession.patientId())))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(post("/api/clinica/laboratorio")
@@ -132,13 +133,13 @@ class ApiApplicationTests {
                                   "patientId": %d,
                                   "exams": ["hemograma", "glicemia"]
                                 }
-                                """.formatted(patientId)))
+                                """.formatted(patientSession.patientId())))
                 .andExpect(status().isCreated());
 
-        mockMvc.perform(get("/api/clinica/historia/{patientId}", patientId)
+        mockMvc.perform(get("/api/clinica/historia/{patientId}", patientSession.patientId())
                         .header(AUTHORIZATION, bearerToken(token)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.patient.id").value(patientId))
+                .andExpect(jsonPath("$.patient.id").value(patientSession.patientId()))
                 .andExpect(jsonPath("$.consultations.length()").value(2))
                 .andExpect(jsonPath("$.prescriptions.length()").value(1))
                 .andExpect(jsonPath("$.laboratoryOrders.length()").value(1));
@@ -153,7 +154,8 @@ class ApiApplicationTests {
 
     @Test
     void shouldLoginAndLogoutWithJwt() throws Exception {
-        String token = loginAndGetToken();
+        PatientSession patientSession = createPatient("CC-104", "none", "patient104");
+        String token = loginAndGetToken(patientSession.document(), patientSession.password());
 
         mockMvc.perform(post("/api/auth/logout")
                         .header(AUTHORIZATION, bearerToken(token)))
@@ -166,7 +168,18 @@ class ApiApplicationTests {
                 .andExpect(status().isUnauthorized());
     }
 
-    private Long createPatient(String document, String allergy) throws Exception {
+    @Test
+    void shouldForbidAccessToAnotherPatientData() throws Exception {
+        PatientSession patientOne = createPatient("CC-105", "none", "patient105");
+        PatientSession patientTwo = createPatient("CC-106", "none", "patient106");
+        String token = loginAndGetToken(patientOne.document(), patientOne.password());
+
+        mockMvc.perform(get("/api/clinica/historia/{patientId}", patientTwo.patientId())
+                        .header(AUTHORIZATION, bearerToken(token)))
+                .andExpect(status().isForbidden());
+    }
+
+    private PatientSession createPatient(String document, String allergy, String password) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/clinica/paciente")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -176,19 +189,20 @@ class ApiApplicationTests {
                                   "document": "%s",
                                   "email": "%s@example.com",
                                   "phone": "3001234567",
+                                  "password": "%s",
                                   "allergies": ["%s"]
                                 }
-                                """.formatted(document, document.toLowerCase(), allergy)))
+                                """.formatted(document, document.toLowerCase(), password, allergy)))
                 .andExpect(status().isCreated())
                 .andReturn();
 
         JsonNode node = objectMapper.readTree(result.getResponse().getContentAsString());
-        return node.get("id").asLong();
+        return new PatientSession(node.get("id").asLong(), document, password);
     }
 
-    private String getFirstAvailableSlot(String specialty) throws Exception {
+    private String getFirstAvailableSlot(String token, String specialty) throws Exception {
         MvcResult result = mockMvc.perform(get("/api/clinica/medicos")
-                        .header(AUTHORIZATION, bearerToken(loginAndGetToken()))
+                        .header(AUTHORIZATION, bearerToken(token))
                         .param("especialidad", specialty))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -197,16 +211,17 @@ class ApiApplicationTests {
         return doctors.get(0).get("availableSlots").get(0).asText();
     }
 
-    private String loginAndGetToken() throws Exception {
+    private String loginAndGetToken(String document, String password) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "username": "admin",
-                                  "password": "admin123"
+                                  "document": "%s",
+                                  "password": "%s"
                                 }
-                                """))
+                                """.formatted(document, password)))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.patientId").isNumber())
                 .andReturn();
 
         JsonNode node = objectMapper.readTree(result.getResponse().getContentAsString());
@@ -215,5 +230,8 @@ class ApiApplicationTests {
 
     private String bearerToken(String token) {
         return "Bearer " + token;
+    }
+
+    private record PatientSession(Long patientId, String document, String password) {
     }
 }

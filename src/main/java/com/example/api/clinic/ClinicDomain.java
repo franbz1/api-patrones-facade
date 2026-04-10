@@ -81,6 +81,7 @@ public final class ClinicDomain {
             @JsonAlias({"documento"}) String document,
             @JsonAlias({"correo"}) String email,
             @JsonAlias({"telefono"}) String phone,
+            @JsonAlias({"contrasena"}) String password,
             @JsonAlias({"alergias"}) List<String> allergies) {
 
         public CreatePatientRequest {

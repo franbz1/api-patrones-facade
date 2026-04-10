@@ -10,7 +10,7 @@ public final class AuthModels {
     }
 
     public record LoginRequest(
-            @JsonAlias({"username", "usuario"}) String username,
+            @JsonAlias({"identifier", "username", "usuario", "document", "documento"}) String identifier,
             @JsonAlias({"password", "contrasena"}) String password) {
     }
 
@@ -19,6 +19,7 @@ public final class AuthModels {
             String tokenType,
             Instant expiresAt,
             String username,
+            Long patientId,
             List<String> roles) {
     }
 
@@ -28,6 +29,7 @@ public final class AuthModels {
     public record AuthenticatedUser(
             String username,
             String password,
+            Long patientId,
             List<String> roles) {
     }
 }
