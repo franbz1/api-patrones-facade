@@ -7,6 +7,7 @@ This module contains the Spring Boot backend for the medical clinic workshop. It
 - Java 17
 - Spring Boot 3
 - `spring-boot-starter-web`
+- `spring-boot-starter-security`
 - `spring-boot-starter-test`
 
 ## Current Scope
@@ -19,9 +20,49 @@ That means:
 - There is no persistence layer, repository layer, or external service integration
 - The API is designed for the workshop demo and for frontend integration
 
+## Run Locally
+
+### Requirements
+
+- Java 17 installed
+- Maven 3.9+ installed and available in your `PATH`
+
+### Start the server
+
+From the `api` folder:
+
+```bash
+mvn spring-boot:run
+```
+
+By default the server starts on:
+
+- `http://localhost:8080`
+
+Useful endpoints to confirm the application is running:
+
+- `GET http://localhost:8080/api/health`
+- `POST http://localhost:8080/api/auth/login`
+
+### Package and run as a jar
+
+```bash
+mvn clean package
+java -jar target/api-0.0.1-SNAPSHOT.jar
+```
+
+### JWT configuration
+
+The application reads these local properties from `src/main/resources/application.properties`:
+
+- `app.security.jwt.secret`
+- `app.security.jwt.expiration-minutes`
+
+For a real environment, move the secret to an environment variable or secret manager.
+
 ## Package Structure
 
-The current implementation lives under `com.example.api.clinic`.
+The current implementation lives under `com.example.api.clinic` and `com.example.api.auth`.
 
 - `ClinicController`: exposes the REST endpoints under `/api/clinica`
 - `ClinicFacade`: orchestrates cross-service flows and hides subsystem complexity
@@ -31,17 +72,103 @@ The current implementation lives under `com.example.api.clinic`.
 - `MedicalRecordService`: stores consultation records associated with a patient
 - `PrescriptionService`: creates prescriptions and validates medications against allergies
 - `LaboratoryService`: simulates laboratory orders and exam results
+- `AuthController`: exposes login and logout endpoints
+- `AuthService`: validates in-memory users and revokes JWTs on logout
+- `JwtService`: creates and validates JWT tokens using HMAC-SHA256
+- `JwtAuthenticationFilter`: extracts the `Bearer` token and authenticates requests
+- `SecurityConfig`: defines public and protected routes
 
 ## Architecture
 
 The backend follows a small facade-oriented design:
 
 1. The frontend talks only to REST endpoints.
-2. `ClinicController` delegates business flows to `ClinicFacade`.
-3. `ClinicFacade` coordinates the required subsystems for each use case.
-4. Subsystems keep their own in-memory state.
+2. `AuthController` provides authentication with JWT.
+3. `ClinicController` delegates business flows to `ClinicFacade`.
+4. `ClinicFacade` coordinates the required subsystems for each use case.
+5. Subsystems keep their own in-memory state.
 
 This keeps the frontend contract simple while still reflecting the workshop requirement that real clinic operations involve multiple internal services.
+
+## Authentication
+
+JWT authentication is now available.
+
+### Public routes
+
+- `GET /api/health`
+- `POST /api/auth/login`
+- `POST /api/clinica/paciente`
+
+### Protected routes
+
+- `POST /api/auth/logout`
+- `GET /api/clinica/medicos`
+- `POST /api/clinica/cita`
+- `GET /api/clinica/historia/{patientId}`
+- `POST /api/clinica/prescripcion`
+- `POST /api/clinica/laboratorio`
+
+### Demo users
+
+These users are seeded in memory:
+
+- `admin` / `admin123`
+- `doctor` / `doctor123`
+- `patient` / `patient123`
+
+### `POST /api/auth/login`
+
+Returns a JWT that must be sent in the `Authorization` header.
+
+Request body:
+
+```json
+{
+  "username": "admin",
+  "password": "admin123"
+}
+```
+
+Response body:
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "tokenType": "Bearer",
+  "expiresAt": "2026-04-10T20:10:00Z",
+  "username": "admin",
+  "roles": ["ROLE_ADMIN"]
+}
+```
+
+### `POST /api/auth/logout`
+
+Invalidates the current JWT in memory until it expires.
+
+Required header:
+
+```text
+Authorization: Bearer <token>
+```
+
+Response body:
+
+```json
+{
+  "message": "Logout successful",
+  "loggedOutAt": "2026-04-10T18:10:00Z"
+}
+```
+
+### Frontend usage
+
+The frontend should:
+
+1. Call `POST /api/auth/login`
+2. Store the returned `accessToken`
+3. Send `Authorization: Bearer <token>` on protected requests
+4. Call `POST /api/auth/logout` when the user signs out
 
 ## Facade Responsibilities
 
@@ -129,6 +256,10 @@ Notes:
 
 Returns doctors and currently available slots.
 
+Authentication:
+
+- Requires `Authorization: Bearer <token>`
+
 Supported specialty values:
 
 - `cardiologia`
@@ -141,6 +272,10 @@ If `especialidad` is omitted, all doctors are returned.
 ### `POST /cita`
 
 Schedules an appointment.
+
+Authentication:
+
+- Requires `Authorization: Bearer <token>`
 
 Request body:
 
@@ -161,6 +296,10 @@ Important:
 
 Returns the complete clinical history used by the frontend.
 
+Authentication:
+
+- Requires `Authorization: Bearer <token>`
+
 Response sections:
 
 - `patient`
@@ -173,6 +312,10 @@ Response sections:
 ### `POST /prescripcion`
 
 Creates a prescription after validating allergies.
+
+Authentication:
+
+- Requires `Authorization: Bearer <token>`
 
 Request body:
 
@@ -193,6 +336,10 @@ Request body:
 
 Creates a laboratory order with simulated results.
 
+Authentication:
+
+- Requires `Authorization: Bearer <token>`
+
 Request body:
 
 ```json
@@ -206,11 +353,12 @@ Request body:
 
 For the frontend agent, the recommended flow is:
 
-1. Create a patient with `POST /api/clinica/paciente`
-2. Fetch available doctors with `GET /api/clinica/medicos?especialidad=...`
-3. Pick one of the returned slots and schedule it with `POST /api/clinica/cita`
-4. Use `GET /api/clinica/historia/{patientId}` as the main consolidated patient dashboard source
-5. Use `POST /api/clinica/prescripcion` and `POST /api/clinica/laboratorio` for secondary flows
+1. Authenticate with `POST /api/auth/login`
+2. Create a patient with `POST /api/clinica/paciente`
+3. Fetch available doctors with `GET /api/clinica/medicos?especialidad=...`
+4. Pick one of the returned slots and schedule it with `POST /api/clinica/cita`
+5. Use `GET /api/clinica/historia/{patientId}` as the main consolidated patient dashboard source
+6. Use `POST /api/clinica/prescripcion` and `POST /api/clinica/laboratorio` for secondary flows
 
 The most useful endpoint for a dashboard is `GET /api/clinica/historia/{patientId}` because it already aggregates data from multiple subsystems.
 
@@ -227,6 +375,12 @@ Typical failure cases:
   - Past appointment date
   - Medication blocked by allergies
 
+- `401 Unauthorized`
+  - Missing token on protected routes
+  - Invalid credentials
+  - Expired token
+  - Revoked token after logout
+
 - `404 Not Found`
   - Patient not found
   - Appointment not found
@@ -242,6 +396,8 @@ Current coverage validates:
 
 - patient registration
 - duplicate document rejection
+- login and logout with JWT
+- protected route enforcement
 - appointment scheduling
 - allergy validation for prescriptions
 - consolidated history response
@@ -249,8 +405,8 @@ Current coverage validates:
 ## Known Limitations
 
 - No persistence
-- No authentication
 - No pagination
 - No update endpoints
 - Appointment cancellation exists only at service level for now, not as a REST endpoint
 - Past appointments only appear in history once their datetime is before the current system time
+- Auth users are demo users stored in memory, not linked to patient registration
