@@ -1,6 +1,4 @@
 package com.example.api.clinic;
-
-import com.fasterxml.jackson.annotation.JsonAlias;
 import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -76,13 +74,13 @@ public final class ClinicDomain {
     }
 
     public record CreatePatientRequest(
-            @JsonAlias({"nombres"}) String firstName,
-            @JsonAlias({"apellidos"}) String lastName,
-            @JsonAlias({"documento"}) String document,
-            @JsonAlias({"correo"}) String email,
-            @JsonAlias({"telefono"}) String phone,
-            @JsonAlias({"contrasena"}) String password,
-            @JsonAlias({"alergias"}) List<String> allergies) {
+            String firstName,
+            String lastName,
+            String document,
+            String email,
+            String phone,
+            String password,
+            List<String> allergies) {
 
         public CreatePatientRequest {
             allergies = safeList(allergies);
@@ -90,20 +88,20 @@ public final class ClinicDomain {
     }
 
     public record CreateAppointmentRequest(
-            @JsonAlias({"pacienteId"}) Long patientId,
-            @JsonAlias({"especialidad"}) String specialty,
-            @JsonAlias({"fecha"}) LocalDateTime appointmentDate) {
+            Long patientId,
+            String specialty,
+            LocalDateTime appointmentDate) {
     }
 
     public record MedicationRequest(
-            @JsonAlias({"nombre"}) String name,
-            @JsonAlias({"dosis"}) String dose,
-            @JsonAlias({"duracion"}) String duration) {
+            String name,
+            String dose,
+            String duration) {
     }
 
     public record CreatePrescriptionRequest(
-            @JsonAlias({"pacienteId"}) Long patientId,
-            @JsonAlias({"medicamentos"}) List<MedicationRequest> medications) {
+            Long patientId,
+            List<MedicationRequest> medications) {
 
         public CreatePrescriptionRequest {
             medications = safeList(medications);
@@ -111,8 +109,8 @@ public final class ClinicDomain {
     }
 
     public record CreateLaboratoryRequest(
-            @JsonAlias({"pacienteId"}) Long patientId,
-            @JsonAlias({"examenes"}) List<String> exams) {
+            Long patientId,
+            List<String> exams) {
 
         public CreateLaboratoryRequest {
             exams = safeList(exams);

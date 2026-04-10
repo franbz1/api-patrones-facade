@@ -214,23 +214,23 @@ Recommended demo credentials for local development:
   - Registers the patient in `PatientService`
   - Initializes a clinical record in `MedicalRecordService`
 
-- `agendarCita(...)`
+- `scheduleAppointment(...)`
   - Validates that the patient exists using `PatientService`
   - Schedules the appointment using `AgendaService`
 
-- `verHistoriaCompleta(...)`
+- `getCompleteHistory(...)`
   - Loads patient data from `PatientService`
   - Consolidates consultations from `MedicalRecordService`
   - Consolidates past appointments from `AgendaService`
   - Consolidates prescriptions from `PrescriptionService`
   - Consolidates laboratory orders from `LaboratoryService`
 
-- `generarPrescripcion(...)`
+- `createPrescription(...)`
   - Validates the patient and allergies with `PatientService`
   - Creates the prescription in `PrescriptionService`
   - Registers a consultation event in `MedicalRecordService`
 
-- `solicitarExamenes(...)`
+- `requestLaboratoryTests(...)`
   - Validates the patient with `PatientService`
   - Creates the laboratory order in `LaboratoryService`
   - Registers a consultation event in `MedicalRecordService`
@@ -287,7 +287,6 @@ Request body:
 
 Notes:
 
-- Spanish aliases are also accepted for some fields, for example `nombres`, `apellidos`, `documento`, `correo`, `telefono`, `alergias`
 - Patient registration now creates the patient login account as well
 
 ### `GET /medicos?especialidad=cardiologia`

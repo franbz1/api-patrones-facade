@@ -10,8 +10,8 @@ public final class AuthModels {
     }
 
     public record LoginRequest(
-            @JsonAlias({"identifier", "username", "usuario", "document", "documento"}) String identifier,
-            @JsonAlias({"password", "contrasena"}) String password) {
+            @JsonAlias({"identifier", "username", "document"}) String identifier,
+            @JsonAlias({"password"}) String password) {
     }
 
     public record LoginResponse(

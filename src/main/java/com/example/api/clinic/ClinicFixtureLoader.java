@@ -75,15 +75,15 @@ public class ClinicFixtureLoader implements ApplicationRunner {
                 historicalSpecialty,
                 LocalDateTime.now().minusDays(30).withHour(10).withMinute(0).withSecond(0).withNano(0));
 
-        clinicFacade.generarPrescripcion(
+        clinicFacade.createPrescription(
                 patient.id(),
                 List.of(new MedicationRequest("loratadine", "10 mg", "7 days")));
 
-        clinicFacade.solicitarExamenes(patient.id(), exams);
+        clinicFacade.requestLaboratoryTests(patient.id(), exams);
 
         List<DoctorAvailability> doctorAvailabilities = agendaService.listAvailableDoctors(futureSpecialty);
         if (!doctorAvailabilities.isEmpty() && !doctorAvailabilities.get(0).availableSlots().isEmpty()) {
-            clinicFacade.agendarCita(
+            clinicFacade.scheduleAppointment(
                     patient.id(),
                     futureSpecialty,
                     doctorAvailabilities.get(0).availableSlots().get(0));

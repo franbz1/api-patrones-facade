@@ -46,16 +46,16 @@ public class ClinicFacade {
         return patient;
     }
 
-    public Appointment agendarCita(Long patientId, String specialty, java.time.LocalDateTime appointmentDate) {
+    public Appointment scheduleAppointment(Long patientId, String specialty, java.time.LocalDateTime appointmentDate) {
         patientService.getPatientProfile(patientId);
         return agendaService.scheduleAppointment(patientId, specialty, appointmentDate);
     }
 
-    public Appointment agendarCita(CreateAppointmentRequest request) {
-        return agendarCita(request.patientId(), request.specialty(), request.appointmentDate());
+    public Appointment scheduleAppointment(CreateAppointmentRequest request) {
+        return scheduleAppointment(request.patientId(), request.specialty(), request.appointmentDate());
     }
 
-    public CompleteHistoryResponse verHistoriaCompleta(Long patientId) {
+    public CompleteHistoryResponse getCompleteHistory(Long patientId) {
         Patient patient = patientService.getPatientProfile(patientId);
         return new CompleteHistoryResponse(
                 patient,
@@ -66,7 +66,7 @@ public class ClinicFacade {
                 laboratoryService.getOrders(patientId));
     }
 
-    public Prescription generarPrescripcion(Long patientId, java.util.List<ClinicDomain.MedicationRequest> medications) {
+    public Prescription createPrescription(Long patientId, java.util.List<ClinicDomain.MedicationRequest> medications) {
         Patient patient = patientService.getPatientProfile(patientId);
         Prescription prescription = prescriptionService.generatePrescription(patientId, medications, patient.allergies());
         medicalRecordService.registerConsultation(
@@ -77,11 +77,11 @@ public class ClinicFacade {
         return prescription;
     }
 
-    public Prescription generarPrescripcion(CreatePrescriptionRequest request) {
-        return generarPrescripcion(request.patientId(), request.medications());
+    public Prescription createPrescription(CreatePrescriptionRequest request) {
+        return createPrescription(request.patientId(), request.medications());
     }
 
-    public LaboratoryOrder solicitarExamenes(Long patientId, java.util.List<String> exams) {
+    public LaboratoryOrder requestLaboratoryTests(Long patientId, java.util.List<String> exams) {
         patientService.getPatientProfile(patientId);
         LaboratoryOrder laboratoryOrder = laboratoryService.requestExams(patientId, exams);
         medicalRecordService.registerConsultation(
@@ -92,7 +92,7 @@ public class ClinicFacade {
         return laboratoryOrder;
     }
 
-    public LaboratoryOrder solicitarExamenes(CreateLaboratoryRequest request) {
-        return solicitarExamenes(request.patientId(), request.exams());
+    public LaboratoryOrder requestLaboratoryTests(CreateLaboratoryRequest request) {
+        return requestLaboratoryTests(request.patientId(), request.exams());
     }
 }

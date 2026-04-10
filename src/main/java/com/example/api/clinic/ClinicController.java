@@ -45,32 +45,32 @@ public class ClinicController {
     @ResponseStatus(HttpStatus.CREATED)
     public Appointment createAppointment(@RequestBody CreateAppointmentRequest request, Authentication authentication) {
         validatePatientAccess(authentication, request.patientId());
-        return clinicFacade.agendarCita(request);
+        return clinicFacade.scheduleAppointment(request);
     }
 
     @GetMapping("/historia/{patientId}")
     public CompleteHistoryResponse getCompleteHistory(@PathVariable Long patientId, Authentication authentication) {
         validatePatientAccess(authentication, patientId);
-        return clinicFacade.verHistoriaCompleta(patientId);
+        return clinicFacade.getCompleteHistory(patientId);
     }
 
     @PostMapping("/prescripcion")
     @ResponseStatus(HttpStatus.CREATED)
     public Prescription createPrescription(@RequestBody CreatePrescriptionRequest request, Authentication authentication) {
         validatePatientAccess(authentication, request.patientId());
-        return clinicFacade.generarPrescripcion(request);
+        return clinicFacade.createPrescription(request);
     }
 
     @PostMapping("/laboratorio")
     @ResponseStatus(HttpStatus.CREATED)
     public LaboratoryOrder createLaboratoryOrder(@RequestBody CreateLaboratoryRequest request, Authentication authentication) {
         validatePatientAccess(authentication, request.patientId());
-        return clinicFacade.solicitarExamenes(request);
+        return clinicFacade.requestLaboratoryTests(request);
     }
 
     @GetMapping("/medicos")
-    public List<DoctorAvailability> getDoctors(@RequestParam(required = false) String especialidad) {
-        return agendaService.listAvailableDoctors(especialidad);
+    public List<DoctorAvailability> getDoctors(@RequestParam(name = "especialidad", required = false) String specialty) {
+        return agendaService.listAvailableDoctors(specialty);
     }
 
     private void validatePatientAccess(Authentication authentication, Long patientId) {
